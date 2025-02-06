@@ -33,10 +33,7 @@ import json
 from dotenv import load_dotenv 
 from os import listdir
 from os.path import isfile, join
-
-# flask-san
-from flask import Flask,render_template, request
-app = Flask(__name__)
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -52,7 +49,8 @@ os.environ['OPENWEATHERMAP_API_KEY']=OPENWEATHERMAP_API_KEY
 GEMINI_MODEL='gemini-1.5-flash'
 llm = ChatGoogleGenerativeAI(google_api_key=GOOGLE_API_KEY, model=GEMINI_MODEL, temperature=0.3)
 
-
+# file upload function
+ALLOWED_EXTENSIONS = {'txt'}
 def upload_file(file, filename:str):
     
     if file.is_file() and file.suffix == '.txt':
@@ -61,6 +59,12 @@ def upload_file(file, filename:str):
         
     else:
         return print('file needs to be a .txt file')
+    
+
+
+
+
+
     
 # state
 class State(TypedDict):
@@ -208,59 +212,47 @@ def google_image_search(query: str) -> str:
 google_image_tool=Tool(name='google_image_tool', func=google_image_search, description='Use this tool to search for images using Google Custom Search API')
 
 
-# langgraph
-#loading tools
-api_tools=load_tools(['openweathermap-api','wikipedia'])
-langgraph_tools=[current_date_time_tool,google_image_tool,get_schedule,schedule_creator,local_files_browser, save_schedule, schedule_editor,schedule_loader]+api_tools
+class Schedule_agent:
+    def __init__(self):
+        self.agent=self._setup()
+    def _setup(self):
+        api_tools=load_tools(['openweathermap-api','wikipedia'])
+        langgraph_tools=[current_date_time_tool,google_image_tool,get_schedule,schedule_creator,local_files_browser, save_schedule, schedule_editor,schedule_loader]+api_tools
 
 
 
-graph_builder = StateGraph(State)
+        graph_builder = StateGraph(State)
 
-# Modification: tell the LLM which tools it can call
-llm_with_tools = llm.bind_tools(langgraph_tools)
-tool_node = ToolNode(tools=langgraph_tools)
-def chatbot(state: State):
-  """ travel assistant that answers user questions about their trip.
-  Depending on the request, leverage which tools to use if necessary."""
-  return {"messages": [llm_with_tools.invoke(state['messages'])]}
+        # Modification: tell the LLM which tools it can call
+        llm_with_tools = llm.bind_tools(langgraph_tools)
+        tool_node = ToolNode(tools=langgraph_tools)
+        def chatbot(state: State):
+            """ travel assistant that answers user questions about their trip.
+            Depending on the request, leverage which tools to use if necessary."""
+            return {"messages": [llm_with_tools.invoke(state['messages'])]}
 
-graph_builder.add_node("chatbot", chatbot)
+        graph_builder.add_node("chatbot", chatbot)
 
 
-graph_builder.add_node("tools", tool_node)
-# Any time a tool is called, we return to the chatbot to decide the next step
-graph_builder.set_entry_point("chatbot")
-graph_builder.add_edge("tools", "chatbot")
-graph_builder.add_conditional_edges(
-    "chatbot",
-    tools_condition,
-)
-memory=MemorySaver()
-graph = graph_builder.compile(checkpointer=memory)
+        graph_builder.add_node("tools", tool_node)
+        # Any time a tool is called, we return to the chatbot to decide the next step
+        graph_builder.set_entry_point("chatbot")
+        graph_builder.add_edge("tools", "chatbot")
+        graph_builder.add_conditional_edges(
+            "chatbot",
+            tools_condition,
+        )
+        memory=MemorySaver()
+        graph=graph_builder.compile(checkpointer=memory)
+        return graph
+        
+    def stream(self,input:str):
+        config = {"configurable": {"thread_id": "1"}}
+        input_message = HumanMessage(content=input)
+        for event in self.agent.stream({"messages": [input_message]}, config, stream_mode="values"):
+            event["messages"][-1].pretty_print()
 
-config = {"configurable": {"thread_id": "1"}}
-def chatbot(input):
-    response=graph.invoke({'messages':HumanMessage(content=str(input))},config)
-    return response['messages'][-1].content
-
-# config = {"configurable": {"thread_id": "1"}}
-# def chatbot(user_input):
-#     input_message = HumanMessage(content=str(user_input))
-#     event={}
-#     for event in graph.stream({"messages": [input_message]}, config, stream_mode="values"):
-#         event["messages"][-1].pretty_print()
-#     return event
-
-@app.route("/")
-def home():    
-    return render_template("index.html")
-@app.route("/get")
-def get_bot_response():    
-    userText = request.args.get('msg')  
-    response = chatbot(userText)  
-    #return str(bot.get_response(userText)) 
-    return response
-
-if __name__ == "__main__":
-   app.run(debug=True)
+    def chatbot(self,input:str):
+        config = {"configurable": {"thread_id": "1"}}
+        response=self.agent.invoke({'messages':HumanMessage(content=str(input))},config)
+        return response['messages'][-1].content

@@ -6,8 +6,10 @@
     <title>GenAI-Bot</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <style>
+        
         * {
             box-sizing: border-box;
+            
         }
         
         /* Set height of body and document to 100% */
@@ -15,11 +17,12 @@
             height: 100%;
             margin: 0;
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(to bottom, #1e3c72, #2a5298); /* Background gradient */
+            background: linear-gradient(to bottom, #ffffff, #84bbff); /* Background gradient */
+            scroll-behavior: auto;
         }
 
         h1, h4 {
-            color: #fff;
+            color: #000000;
         }
 
         /* Chatbox container */
@@ -28,59 +31,101 @@
             width: 90%;
             max-width: 600px;
             margin-top: 60px;
-            background: rgba(255, 255, 255, 0.1); /* Semi-transparent */
+            background: rgb(255, 255, 255); /* Semi-transparent */
             padding: 20px;
             border-radius: 15px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             overflow-y: auto;
+            
             height: 400px;
         }
 
+        /*Scrollbar width*/
+        ::-webkit-scrollbar {
+        width: 10px;
+   
+        }
+
+        /* Track */
+        ::-webkit-scrollbar-track {
+        background: rgb(255, 255, 255,0);
+        
+        }
+   
+        /* Handle */
+        ::-webkit-scrollbar-thumb {
+        background: rgb(146, 186, 255);
+        border-radius: 10px; 
+        }
+
+        /* Handle on hover */
+        ::-webkit-scrollbar-thumb:hover {
+        background: #555; 
+        }
+
+
         #userInput {
-            display: flex;
+            margin: 0 auto;
             justify-content: center;
             margin-top: 20px;
+            width: 86%;
+            border: 3px solid #ffffff;
+            border-radius: 15px;
+    
+            
+
         }
 
         #textInput {
-            width: 80%;
+            width: 100%;
             padding: 10px;
             border: none;
-            border-radius: 30px;
+            border-radius: 15px;
             font-size: 16px;
             outline: none;
             transition: 0.3s ease-in-out;
+            background-color: #00000000;
+            
         }
 
-        #textInput:focus {
-            border: 2px solid #4169e1;
-            box-shadow: 0 0 10px rgba(65, 105, 225, 0.5);
-        }
+  
 
         /* User and bot message styles */
-        .userText, .botText {
+        .userText {
+            display: flex;
+            justify-content: flex-end;
+            margin: 10px 0;
+            color: rgb(255, 255, 255);
+            font-family: 'Monospace', sans-serif;
+            font-size: 16px;
+            
+        }
+        
+        .botText {
             display: flex;
             justify-content: flex-start;
             margin: 10px 0;
-            color: white;
+            color: rgb(255, 255, 255);
             font-family: 'Monospace', sans-serif;
             font-size: 16px;
         }
 
         .userText span {
-            background-color: #808080;
+            background-color: #02c028;
             padding: 10px;
             border-radius: 15px;
             max-width: 75%;
             word-wrap: break-word;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
         .botText span {
-            background-color: #4169e1;
+            background-color: #0084ff;
             padding: 10px;
             border-radius: 15px;
             max-width: 75%;
             word-wrap: break-word;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
         /* Animation for chat messages */
@@ -88,6 +133,7 @@
             opacity: 0;
             animation: fadeIn 0.5s forwards;
         }
+
 
         @keyframes fadeIn {
             to {
@@ -119,14 +165,13 @@
 </head>
 <body>
     <div>
-        <h1 align="center"><b>AI-Gen ChatBot</b></h1>
+        <h1 align="center"><b>AI-Gen Trip Assistant</b></h1>
         <h4 align="center"><b>Please start your personalized interaction with the chatbot</b></h4>
-        <p align="center"><img src="static\\chatbot1.png" alt="Python-BOT" height="210" width="220"></p>
         <div class="boxed">
             <div>
                 <div id="chatbox">
                     <p class="botText">
-                        <span>Hi! I'm your AI-Generative Chatbot</span>
+                        <span>Hi! I'm your AI Schedule Assistant</span>
                     </p>
                 </div>
                 <div id="userInput">
