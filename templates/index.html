@@ -162,34 +162,41 @@
             border-radius: 50%;
         }
     </style>
+
+
+
 </head>
 <body>
+    
     <div>
         <h1 align="center"><b>AI-Gen Trip Assistant</b></h1>
         <h4 align="center"><b>Please start your personalized interaction with the chatbot</b></h4>
+        
         <div class="boxed">
             <div>
+                
                 <div id="chatbox">
                     <p class="botText">
                         <span>Hi! I'm your AI Schedule Assistant</span>
                     </p>
+                
                 </div>
                 <div id="userInput">
                     <input id="textInput" type="text" name="msg" placeholder="Message" />
                 </div>
+               
             </div>
         </div>
     </div>
-
     <script>
         function getBotResponse() {
             var rawText = $("#textInput").val();
-            var userHtml = '<p class="userText"><span>' + rawText + "</span></p>";
+            var userHtml ='<p class="userText"><span>' + rawText + "</span></p>";
             $("#textInput").val("");
             $("#chatbox").append(userHtml);
             document.getElementById("userInput").scrollIntoView({ block: "start", behavior: "smooth" });
             $.get("/get", { msg: rawText }).done(function (data) {
-                var botHtml = '<p class="botText"><span>' + data + "</span></p>";
+                var botHtml = '<p class="botText"><span>' +  data + "</span></p>";
                 $("#chatbox").append(botHtml);
                 document.getElementById("userInput").scrollIntoView({ block: "start", behavior: "smooth" });
             });
@@ -201,5 +208,6 @@
             }
         });
     </script>
+    
 </body>
 </html>
