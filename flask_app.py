@@ -1,7 +1,7 @@
 from flask import Flask,render_template, request
-from schedule_agent import Schedule_agent
+from travel_agent import travel_agent
 
-agent_graph=Schedule_agent()
+agent_graph=travel_agent()
 
 app = Flask(__name__)
 @app.route("/")

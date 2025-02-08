@@ -1,8 +1,8 @@
-import pandas as pd
 from langchain_google_genai import ChatGoogleGenerativeAI
+
 from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain.tools import Tool,tool,StructuredTool
-from langchain.prompts import PromptTemplate
+
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition,InjectedState
@@ -25,46 +25,27 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 
-import pytz
-from datetime import datetime
+
 import os
 import requests
 import json
 from dotenv import load_dotenv 
 from os import listdir
 from os.path import isfile, join
-from werkzeug.utils import secure_filename
+
 
 load_dotenv()
 
 
 # loading the necessary api keys
 GOOGLE_API_KEY=os.getenv('google_api_key')
-pse=os.getenv('pse')
-OPENWEATHERMAP_API_KEY=os.getenv('open_weather_key')
-os.environ['OPENWEATHERMAP_API_KEY']=OPENWEATHERMAP_API_KEY
 
 
-#defining the model
+    
+
 GEMINI_MODEL='gemini-1.5-flash'
+
 llm = ChatGoogleGenerativeAI(google_api_key=GOOGLE_API_KEY, model=GEMINI_MODEL, temperature=0.3)
-
-# file upload function
-ALLOWED_EXTENSIONS = {'txt'}
-def upload_file(file, filename:str):
-    
-    if file.is_file() and file.suffix == '.txt':
-        with open(f'schedules/{filename}.txt', 'w') as f:
-            f.write(file)
-        
-    else:
-        return print('file needs to be a .txt file')
-    
-
-
-
-
-
     
 # state
 class State(TypedDict):
@@ -104,7 +85,7 @@ def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],state: Anno
       return Command(update={'trip_data':ast.literal_eval(result.content),
               'messages': [ToolMessage('Succesfully uploaded schedule',tool_call_id=tool_call_id)]})
   except:
-      return Command(update={'meessages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt')]},
+      return Command(update={'meessages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]},
                      goto='local_files_browser')
   
 
@@ -156,69 +137,15 @@ def save_schedule(state: Annotated[dict, InjectedState],tool_call_id: Annotated[
         f.write(file)
     return f'{filename} saved'
 
-# extra tools for question answering
 
-# initializing time and date tool
-
-#creating a schema
-class time_tool_schema(BaseModel):
-  continent: str = Field(description='continent')
-  city: str = Field(description='city')
-
-def date_time_tool(continent: str,city: str) -> str:
-  """
-  tool to get the current date and time in a city.
-
-  """
-  city=city.replace(' ','_')
-  query=continent+'/'+city
-  timezone = pytz.timezone(query)
-  # Get the current time in UTC, and then convert it to the Marrakech timezone
-  utc_now = datetime.now(pytz.utc)  # Get current time in UTC
-  localized_time = utc_now.astimezone(timezone)  # Convert to Marrakech time
-  time=localized_time.strftime('%Y-%m-%d %H:%M:%S')
-  return time
-
-current_date_time_tool=StructuredTool.from_function(name='current_date_time_tool', func=date_time_tool, description='To get the current date and time in any city',args_schema=time_tool_schema, return_direct=True)
-
-def google_image_search(query: str) -> str:
-  """Search for images using Google Custom Search API
-  args: query
-  return: image url
-  """
-  # Define the API endpoint for Google Custom Search
-  url = "https://www.googleapis.com/customsearch/v1"
-
-  params = {
-      "q": query,
-      "cx": pse,
-      "key": GOOGLE_API_KEY,
-      "searchType": "image",  # Search for images
-      "num": 1  # Number of results to fetch
-  }
-
-  # Make the request to the Google Custom Search API
-  response = requests.get(url, params=params)
-  data = response.json()
-
-  # Check if the response contains image results
-  if 'items' in data:
-      # Extract the first image result
-      image_url = data['items'][0]['link']
-      return image_url
-  else:
-      return "Sorry, no images were found for your query."
-
-google_image_tool=Tool(name='google_image_tool', func=google_image_search, description='Use this tool to search for images using Google Custom Search API')
 
 
 class Schedule_agent:
-    def __init__(self):
-        self.agent=self._setup()
-    def _setup(self):
-        api_tools=load_tools(['openweathermap-api','wikipedia'])
-        langgraph_tools=[current_date_time_tool,google_image_tool,get_schedule,schedule_creator,local_files_browser, save_schedule, schedule_editor,schedule_loader]+api_tools
-
+    def __init__(self,llm:any):
+        self.agent=self._setup(llm)
+    def _setup(self,llm):
+        
+        langgraph_tools=[get_schedule,schedule_creator,local_files_browser, save_schedule, schedule_editor,schedule_loader]
 
 
         graph_builder = StateGraph(State)
@@ -256,3 +183,7 @@ class Schedule_agent:
         config = {"configurable": {"thread_id": "1"}}
         response=self.agent.invoke({'messages':HumanMessage(content=str(input))},config)
         return response['messages'][-1].content
+    
+    def get_state(self, state_val:str):
+        config = {"configurable": {"thread_id": "1"}}
+        return self.agent.get_state(config).values[state_val]
