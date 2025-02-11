@@ -1,6 +1,6 @@
 
-from langchain_community.agent_toolkits.load_tools import load_tools
-from langchain.tools import Tool,tool,StructuredTool
+
+from langchain.tools import tool
 from langchain.prompts import PromptTemplate
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -170,7 +170,8 @@ def look_for_places(query: str, tool_call_id: Annotated[str, InjectedToolCallId]
     Use this tool for more complex user queries like sentences, and if the location is specified in the query.
     Places includes restaurants, bars, speakeasy, games, anything.
     args: query - the query has to be in this format eg.Spicy%20Vegetarian%20Food%20in%20Sydney%20Australia.
-    Alaways include the links in the respons, but not longitude or latitude
+   
+
     """
     try:
         response=requests.get(f'https://maps.googleapis.com/maps/api/place/textsearch/json?query={query}?&key={GOOGLE_API_KEY}')
@@ -207,6 +208,7 @@ def show_places_found(state: Annotated[dict, InjectedState]):
     """
     Tool to get the places found by previous tool calls and to show/display them.
     It has links within that can also be used for directions
+    always show the links
     args: none
     """
     return state['places']

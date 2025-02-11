@@ -1,7 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain_community.agent_toolkits.load_tools import load_tools
-from langchain.tools import Tool,tool,StructuredTool
+
+from langchain.tools import tool
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -43,7 +43,7 @@ GOOGLE_API_KEY=os.getenv('google_api_key')
 
     
 
-GEMINI_MODEL='gemini-1.5-flash'
+GEMINI_MODEL='gemini-2.0-flash'
 
 llm = ChatGoogleGenerativeAI(google_api_key=GOOGLE_API_KEY, model=GEMINI_MODEL, temperature=0.3)
     
@@ -82,16 +82,19 @@ def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],state: Anno
     with open(f'schedules/{filename}', 'rb') as f:
       schedule=f.read()
       result=llm.invoke(f'format this schedule: {str(schedule)} into a json format in the output, do not include ```json```, do not include comments either')
-      return Command(update={'trip_data':ast.literal_eval(result.content),
-              'messages': [ToolMessage('Succesfully uploaded schedule',tool_call_id=tool_call_id)]})
+      try:
+        return Command(update={'trip_data':ast.literal_eval(result.content),
+                'messages': [ToolMessage('Succesfully uploaded schedule',tool_call_id=tool_call_id)]})
+      except: 
+        return Command(update={'messages': [ToolMessage('something went wrong',tool_call_id=tool_call_id)]})
   except:
-      return Command(update={'meessages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]},
+      return Command(update={'messages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]},
                      goto='local_files_browser')
   
 
 @tool
 def schedule_creator(tool_call_id: Annotated[str, InjectedToolCallId], schedule:str)->str:
-  """Tool to create or add a schedule from the chat with the agent
+  """Tool to create a schedule from the chat with the agent
   and then uses an llm to structure it.
   args: schedule - the schedule from the chat
   """
@@ -115,16 +118,22 @@ def get_schedule(state: Annotated[dict, InjectedState])-> str:
 @tool
 def schedule_editor(query:str,state: Annotated[dict, InjectedState],tool_call_id: Annotated[str, InjectedToolCallId])-> str:
   """
-  Tool to edit the schedule.
+  Tool to make modifications to the schedule such as add, delete or modify.
   Pass the query to the llm to edit the schedule.
   args: query - the query to edit the schedule.
   """
   file=state['trip_data']
   result=llm.invoke(f'Edit this schedule: {str(file)} following the instructions in the query: {query}, and include the changes in the schedule, but do not mention them specifically, only include the updated schedule json format in the output, do not include ```json```, do not include comments either')
-  return Command(
-                 update={'trip_data':ast.literal_eval(result.content),
-                          'messages':[ToolMessage(f'edited the schedule with these changes:{ast.literal_eval(result.content)} ', tool_call_id=tool_call_id)
-                                      ]})
+  try:
+    return Command(
+                  update={'trip_data':ast.literal_eval(result.content),
+                            'messages':[ToolMessage(f'edited the schedule with these changes:{ast.literal_eval(result.content)} ', tool_call_id=tool_call_id)
+                                        ]})
+  except: 
+    return Command(
+                  update={'trip_data':result.content,
+                            'messages':[ToolMessage(f'edited the schedule with these changes:{result.content}, but formating failed ', tool_call_id=tool_call_id)
+                                        ]})
 
 @tool
 def save_schedule(state: Annotated[dict, InjectedState],tool_call_id: Annotated[str, InjectedToolCallId], filename: str) -> str:

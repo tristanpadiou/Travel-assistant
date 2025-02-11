@@ -2,29 +2,26 @@ from maps_agent import maps_agent
 from schedule_agent import Schedule_agent
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent, load_tools
+from langchain.agents import load_tools
 from langchain.tools import Tool,tool,StructuredTool
-from langchain.prompts import PromptTemplate
-from langgraph.graph import StateGraph, START, END
+
+from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition,InjectedState
+from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.messages import (
-    SystemMessage,
     HumanMessage,
-    AIMessage,
-    ToolMessage,
 )
 from pydantic import BaseModel, Field
 import pytz
 from datetime import datetime
-from langgraph.types import Command, interrupt
+
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.tools.base import InjectedToolCallId
+
 from typing_extensions import TypedDict
-from typing import Annotated, Literal
+from typing import Annotated
 #get graph visuals
 from IPython.display import Image, display
-from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
+from langchain_core.runnables.graph import MermaidDrawMethod
 import os
 import requests
 from dotenv import load_dotenv 
@@ -36,7 +33,7 @@ pse=os.getenv('pse')
 OPENWEATHERMAP_API_KEY=os.getenv('open_weather_key')
 os.environ['OPENWEATHERMAP_API_KEY']=OPENWEATHERMAP_API_KEY
 
-GEMINI_MODEL='gemini-1.5-flash'
+GEMINI_MODEL='gemini-2.0-flash'
 llm = ChatGoogleGenerativeAI(google_api_key=GOOGLE_API_KEY, model=GEMINI_MODEL, temperature=0.3)
 
 class State(TypedDict):
@@ -61,6 +58,7 @@ def date_time_tool(continent: str,city: str) -> str:
 
   """
   city=city.replace(' ','_')
+  continent=continent.replace(' ','_')
   query=continent+'/'+city
   timezone = pytz.timezone(query)
   # Get the current time in UTC, and then convert it to the Marrakech timezone
@@ -113,7 +111,7 @@ def schedule_manager(query:str):
     save the schedule
     args:query - pass the schedule related queries directly here
     """
-    response=schedule_ai.chatbot(query)
+    response=schedule_ai.chatbot(str(query))
     return response
 
 @tool
@@ -128,7 +126,7 @@ def maps_tool(query: str):
     show the places that have been found
     args:query - maps or location related queries
     """
-    response=maps_ai.chatbot(query)
+    response=maps_ai.chatbot(str(query))
     return response
 
 class travel_agent:
