@@ -73,10 +73,11 @@ def local_files_browser(tool_call_id: Annotated[str, InjectedToolCallId]) -> str
 
 
 @tool
-def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],state: Annotated[dict, InjectedState],filename: str) -> str:
+def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],filename: str) -> Command:
   """
   Use this tool to load the schedule from local directory, which is a text file.
   args: filename - the name of the file, include the extention.
+  return: schedule in a json format
   """
   try:
     with open(f'schedules/{filename}', 'rb') as f:
@@ -88,8 +89,7 @@ def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],state: Anno
       except: 
         return Command(update={'messages': [ToolMessage('something went wrong',tool_call_id=tool_call_id)]})
   except:
-      return Command(update={'messages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]},
-                     goto='local_files_browser')
+      return Command(update={'messages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]})
   
 
 @tool
@@ -121,6 +121,7 @@ def schedule_editor(query:str,state: Annotated[dict, InjectedState],tool_call_id
   Tool to make modifications to the schedule such as add, delete or modify.
   Pass the query to the llm to edit the schedule.
   args: query - the query to edit the schedule.
+  return: modified schedule in a json format
   """
   file=state['trip_data']
   result=llm.invoke(f'Edit this schedule: {str(file)} following the instructions in the query: {query}, and include the changes in the schedule, but do not mention them specifically, only include the updated schedule json format in the output, do not include ```json```, do not include comments either')
