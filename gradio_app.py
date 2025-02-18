@@ -15,7 +15,7 @@ travel_ai=travel_agent(llm)
 
 def chatbot(input, history):
     #no need for history since agent has state memory already
-    response=travel_ai.chatbot(input)
+    response=travel_ai.chat(input)
     return response
 demo = gr.ChatInterface(chatbot, type="messages", autofocus=False)
 

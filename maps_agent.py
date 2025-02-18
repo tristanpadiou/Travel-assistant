@@ -258,7 +258,7 @@ class maps_agent:
         for event in self.agent.stream({"messages": [input_message]}, config, stream_mode="values"):
             event["messages"][-1].pretty_print()
 
-    def chatbot(self,input:str):
+    def chat(self,input:str):
         config = {"configurable": {"thread_id": "1"}}
         response=self.agent.invoke({'messages':HumanMessage(content=str(input))},config)
         return response['messages'][-1].content

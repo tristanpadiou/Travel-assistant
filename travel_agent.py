@@ -49,7 +49,7 @@ schedule_ai=Schedule_agent(llm)
 
 #creating a schema
 class time_tool_schema(BaseModel):
-  continent: str = Field(description='continent')
+  continent: str = Field(description='the continent')
   city: str = Field(description='city')
 
 def date_time_tool(continent: str,city: str) -> str:
@@ -67,7 +67,7 @@ def date_time_tool(continent: str,city: str) -> str:
   time=localized_time.strftime('%Y-%m-%d %H:%M:%S')
   return time
 
-current_date_time_tool=StructuredTool.from_function(name='current_date_time_tool', func=date_time_tool, description='To get the current date and time in any city',args_schema=time_tool_schema, return_direct=True)
+current_date_time_tool=StructuredTool.from_function(name='current_date_time_tool', func=date_time_tool, description='To get the current date and time in any city, agrs: city and continent ',args_schema=time_tool_schema, return_direct=True)
 
 def google_image_search(query: str) -> str:
   """Search for images using Google Custom Search API
@@ -111,7 +111,7 @@ def schedule_manager(query:str):
     save the schedule
     args:query - pass the schedule related queries directly here
     """
-    response=schedule_ai.chatbot(str(query))
+    response=schedule_ai.chat(str(query))
     return response
 
 @tool
@@ -126,7 +126,7 @@ def maps_tool(query: str):
     show the places that have been found
     args:query - maps or location related queries
     """
-    response=maps_ai.chatbot(str(query))
+    response=maps_ai.chat(str(query))
     return response
 
 class travel_agent:
@@ -183,7 +183,7 @@ class travel_agent:
         for event in self.agent.stream({"messages": [input_message]}, config, stream_mode="values"):
             event["messages"][-1].pretty_print()
 
-    def chatbot(self,input:str):
+    def chat(self,input:str):
         config = {"configurable": {"thread_id": "1"}}
         response=self.agent.invoke({'messages':HumanMessage(content=str(input))},config)
         return response['messages'][-1].content

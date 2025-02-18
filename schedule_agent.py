@@ -18,6 +18,11 @@ from langchain_core.tools.base import InjectedToolCallId
 
 #structuring
 import ast
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+#error handling with output parser
+from langchain.output_parsers import RetryOutputParser
+
 
 from dataclasses import dataclass
 from typing_extensions import TypedDict
@@ -82,12 +87,29 @@ def schedule_loader(tool_call_id: Annotated[str, InjectedToolCallId],filename: s
   try:
     with open(f'schedules/{filename}', 'rb') as f:
       schedule=f.read()
-      result=llm.invoke(f'format this schedule: {str(schedule)} into a json format in the output, do not include ```json```, do not include comments either')
+
       try:
-        return Command(update={'trip_data':ast.literal_eval(result.content),
+        parser = JsonOutputParser()
+        prompt = PromptTemplate(
+        template="Answer the user query.\n{format_instructions}\n{query}\n",
+        input_variables=["query"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+
+        chain = prompt | llm
+        result=chain.invoke({"query": f'format this schedule: {str(schedule)} into a json format in the output, do not include ```json```, do not include comments either'})
+        result=parser.parse(result.content)
+        return Command(update={'trip_data':result,
                 'messages': [ToolMessage('Succesfully uploaded schedule',tool_call_id=tool_call_id)]})
-      except: 
-        return Command(update={'messages': [ToolMessage('something went wrong',tool_call_id=tool_call_id)]})
+      except:
+        try: 
+          retry_parser = RetryOutputParser.from_llm(parser=parser, llm=llm)
+          result=retry_parser.parse_with_prompt(result.content, prompt)
+          return Command(update={'trip_data':result,
+                'messages': [ToolMessage('Succesfully uploaded schedule',tool_call_id=tool_call_id)]})
+        except:
+          return Command(update={'trip_data':result.content,
+                        'messages': [ToolMessage(f'loaded the schedule:{result.content}, but formating failed ',tool_call_id=tool_call_id)]})
   except:
       return Command(update={'messages':[ToolMessage('No Schedule please try a different filename, or include the extention eg. filename.txt',tool_call_id=tool_call_id)]})
   
@@ -99,11 +121,28 @@ def schedule_creator(tool_call_id: Annotated[str, InjectedToolCallId], schedule:
   args: schedule - the schedule from the chat
   """
   
-  result=llm.invoke(f'format this schedule: {str(schedule)} into a json format in the output, do not include ```json```, do not include comments either')
-  return Command(update={'trip_data': ast.literal_eval(result.content),
-                          'messages':[ToolMessage(f'added a schedule from the chat{ast.literal_eval(result.content)}', tool_call_id=tool_call_id)
-                                      ]})
+  try:
+        parser = JsonOutputParser()
+        prompt = PromptTemplate(
+        template="Answer the user query.\n{format_instructions}\n{query}\n",
+        input_variables=["query"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
 
+        chain = prompt | llm
+        result=chain.invoke({"query": f'format this schedule: {str(schedule)} into a json format in the output, do not include ```json```, do not include comments either'})
+        result=parser.parse(result.content)
+        return Command(update={'trip_data':result,
+                'messages': [ToolMessage('Succesfully created schedule',tool_call_id=tool_call_id)]})
+  except:
+      try: 
+        retry_parser = RetryOutputParser.from_llm(parser=parser, llm=llm)
+        result=retry_parser.parse_with_prompt(result.content, prompt)
+        return Command(update={'trip_data':result,
+              'messages': [ToolMessage('Succesfully created schedule',tool_call_id=tool_call_id)]})
+      except:
+        return Command(update={'trip_data':result.content,
+                      'messages': [ToolMessage(f'created the schedule:{result.content}, but formating failed ',tool_call_id=tool_call_id)]})
 
 
 @tool
@@ -124,17 +163,28 @@ def schedule_editor(query:str,state: Annotated[dict, InjectedState],tool_call_id
   return: modified schedule in a json format
   """
   file=state['trip_data']
-  result=llm.invoke(f'Edit this schedule: {str(file)} following the instructions in the query: {query}, and include the changes in the schedule, but do not mention them specifically, only include the updated schedule json format in the output, do not include ```json```, do not include comments either')
   try:
-    return Command(
-                  update={'trip_data':ast.literal_eval(result.content),
-                            'messages':[ToolMessage(f'edited the schedule with these changes:{ast.literal_eval(result.content)} ', tool_call_id=tool_call_id)
-                                        ]})
-  except: 
-    return Command(
-                  update={'trip_data':result.content,
-                            'messages':[ToolMessage(f'edited the schedule with these changes:{result.content}, but formating failed ', tool_call_id=tool_call_id)
-                                        ]})
+        parser = JsonOutputParser()
+        prompt = PromptTemplate(
+        template="Answer the user query.\n{format_instructions}\n{query}\n",
+        input_variables=["query"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+
+        chain = prompt | llm
+        result=chain.invoke({"query":  f'Edit this schedule: {str(file)} following the instructions in the query: {query}, and include the changes in the schedule, but do not mention them specifically, only include the updated schedule json format in the output, do not include ```json```, do not include comments either'})
+        result=parser.parse(result.content)
+        return Command(update={'trip_data':result,
+                'messages': [ToolMessage(f'edited the schedule with these changes:{result} ',tool_call_id=tool_call_id)]})
+  except:
+      try: 
+        retry_parser = RetryOutputParser.from_llm(parser=parser, llm=llm)
+        result=retry_parser.parse_with_prompt(result.content, prompt)
+        return Command(update={'trip_data':result,
+              'messages': [ToolMessage(f'edited the schedule with these changes:{result} ',tool_call_id=tool_call_id)]})
+      except:
+        return Command(update={'trip_data':result.content,
+                      'messages': [ToolMessage(f'edited the schedule with these changes:{result}, but formating failed ',tool_call_id=tool_call_id)]})
 
 @tool
 def save_schedule(state: Annotated[dict, InjectedState],tool_call_id: Annotated[str, InjectedToolCallId], filename: str) -> str:
@@ -189,7 +239,7 @@ class Schedule_agent:
         for event in self.agent.stream({"messages": [input_message]}, config, stream_mode="values"):
             event["messages"][-1].pretty_print()
 
-    def chatbot(self,input:str):
+    def chat(self,input:str):
         config = {"configurable": {"thread_id": "1"}}
         response=self.agent.invoke({'messages':HumanMessage(content=str(input))},config)
         return response['messages'][-1].content
