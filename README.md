@@ -26,4 +26,10 @@ To run this project, you need to:
    ```bash
    git clone https://github.com/yourusername/travel-agent.git
    cd travel-agent
+### Installation
 
+1. **Install the required dependencies:**
+
+   Run the following command to install the necessary dependencies for the project:
+   ```bash
+   pip install -r requirements.txt
