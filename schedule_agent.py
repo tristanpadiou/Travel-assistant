@@ -117,13 +117,17 @@ class llm_nodes:
 
       return {'route':route}
   
-  def show_schedule_node(state: State):
+  def show_schedule_node(self,state: State):
     """
     Use this tool to get the information about the schedule once it has been loaded.
     args: none
     return: schedule
     """
-    return {"node_message":state['trip_data']}
+    schedule=state.get('trip_data')
+    if schedule:
+      return {"node_message":schedule}
+    else:
+       return{"node_message":"no schedule found, please upload one or add it in the chat"}
 
 def route(state:State):
     route=state.get('route')
@@ -151,7 +155,7 @@ class Schedule_agent:
 
         graph_builder.add_node('schedule_creator', nodes.schedule_creator_node)
         graph_builder.add_node('schedule_editor', nodes.schedule_editor_node)
-        graph_builder.add_node('show_schedule',nodes.schedule_creator_node)
+        graph_builder.add_node('show_schedule',nodes.show_schedule_node)
         # Any time a tool is called, we return to the chatbot to decide the next step
         graph_builder.set_entry_point("agent")
         graph_builder.add_conditional_edges(
@@ -193,3 +197,7 @@ class Schedule_agent:
     def get_state(self, state_val:str):
         config = {"configurable": {"thread_id": "1"}}
         return self.agent.get_state(config).values[state_val]
+    
+    def update_state(self, data: dict):
+      config = {"configurable": {"thread_id": "1"}}
+      return self.agent.update_state(config, data)
